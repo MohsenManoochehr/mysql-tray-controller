@@ -1,5 +1,10 @@
 # MySQL Tray Controller
 
+[![Latest Release](https://img.shields.io/github/v/release/MohsenManoochehr/mysql-tray-controller)](https://github.com/MohsenManoochehr/mysql-tray-controller/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MohsenManoochehr/mysql-tray-controller/total)](https://github.com/MohsenManoochehr/mysql-tray-controller/releases)
+[![License](https://img.shields.io/github/license/MohsenManoochehr/mysql-tray-controller)](LICENSE)
+[![CI](https://github.com/MohsenManoochehr/mysql-tray-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/MohsenManoochehr/mysql-tray-controller/actions/workflows/ci.yml)
+
 <p align="center">
   <img src="assets/app-icon.png" alt="MySQL Tray Controller icon" width="160">
 </p>
@@ -11,7 +16,6 @@
 <p align="center">
   Created by <a href="https://github.com/MohsenManoochehr">Mohsen Manoochehr</a>
 </p>
-
 
 ## Behavior
 
@@ -98,7 +102,6 @@ The Windows executable and Start Menu shortcut use the embedded icon from
 <p align="center">
   <img src="assets/status-icons-preview.png" alt="Tray status icon preview">
 </p>
-
 
 ## Prerequisites
 

@@ -14,7 +14,25 @@ $StartMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $ShortcutPath = Join-Path $StartMenuDir "MySQL Tray Controller.lnk"
 
 if ($SkipBuild) {
-    $ReleaseExe = $PackagedExe
+    if (Test-Path $PackagedExe) {
+        # Extracted GitHub release package
+        $ReleaseExe = $PackagedExe
+    }
+    elseif (Test-Path $BuiltExe) {
+        # Locally built source repository
+        $ReleaseExe = $BuiltExe
+    }
+    else {
+        throw @"
+No executable was found.
+
+Expected one of:
+  $PackagedExe
+  $BuiltExe
+
+Run 'cargo build --release' first, or use the extracted GitHub release package.
+"@
+    }
 }
 else {
     Push-Location $ProjectRoot

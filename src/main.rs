@@ -347,14 +347,31 @@ fn perform_service_action(service_name: &str, action: &str) -> Result<()> {
         }
         "restart" => {
             let state = service.query_status()?.current_state;
-            if !matches!(state, ServiceState::Stopped | ServiceState::StopPending) {
+
+            if state == ServiceState::StopPending {
+                wait_for_state(
+                    &service,
+                    ServiceState::Stopped,
+                    Duration::from_secs(25),
+                )?;
+            } else if state != ServiceState::Stopped {
                 service.stop()?;
-                wait_for_state(&service, ServiceState::Stopped, Duration::from_secs(25))?;
+
+                wait_for_state(
+                    &service,
+                    ServiceState::Stopped,
+                    Duration::from_secs(25),
+                )?;
             }
 
             let no_arguments: [&OsStr; 0] = [];
             service.start(&no_arguments)?;
-            wait_for_state(&service, ServiceState::Running, Duration::from_secs(25))?;
+
+            wait_for_state(
+                &service,
+                ServiceState::Running,
+                Duration::from_secs(25),
+            )?;
         }
         other => return Err(anyhow!("Unsupported service action: {other}")),
     }

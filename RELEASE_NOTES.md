@@ -11,7 +11,7 @@ The first stable release of MySQL Tray Controller.
 - Configurable service name and refresh interval
 - Optional startup with Windows
 - UAC elevation only when changing the service state
-- Built-in version, author, repository, and diagnostics information
+- Built-in version, author, and repository information
 - Native headless Windows application
 - No MySQL username or password required
 
