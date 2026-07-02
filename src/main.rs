@@ -27,18 +27,16 @@ use windows_sys::Win32::{
     Foundation::ERROR_SERVICE_DOES_NOT_EXIST,
     UI::{
         Shell::ShellExecuteW,
-        WindowsAndMessaging::{
-            MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, SW_HIDE,
-        },
+        WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, SW_HIDE},
     },
 };
-use winreg::{enums::*, RegKey};
 use winit::{
     application::ApplicationHandler,
     event::{StartCause, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::WindowId,
 };
+use winreg::{enums::*, RegKey};
 
 const APP_NAME: &str = "MySQL Tray Controller";
 
@@ -180,8 +178,7 @@ impl Config {
             self.refresh_interval.as_secs()
         );
 
-        fs::write(path, content)
-            .with_context(|| format!("Could not write {}", path.display()))
+        fs::write(path, content).with_context(|| format!("Could not write {}", path.display()))
     }
 }
 
@@ -235,8 +232,7 @@ fn detect_mysql_service() -> String {
 }
 
 fn service_exists(service_name: &str) -> bool {
-    let Ok(manager) =
-        ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)
+    let Ok(manager) = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)
     else {
         return false;
     };
@@ -292,10 +288,8 @@ impl MySqlState {
 }
 
 fn query_service_state(service_name: &str) -> MySqlState {
-    let manager = match ServiceManager::local_computer(
-        None::<&str>,
-        ServiceManagerAccess::CONNECT,
-    ) {
+    let manager = match ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)
+    {
         Ok(manager) => manager,
         Err(error) => return MySqlState::Error(error.to_string()),
     };
@@ -317,23 +311,17 @@ fn query_service_state(service_name: &str) -> MySqlState {
             ServiceState::StartPending => MySqlState::Starting,
             ServiceState::StopPending => MySqlState::Stopping,
             ServiceState::Paused => MySqlState::Paused,
-            ServiceState::ContinuePending | ServiceState::PausePending => {
-                MySqlState::Pending
-            }
+            ServiceState::ContinuePending | ServiceState::PausePending => MySqlState::Pending,
         },
         Err(error) => MySqlState::Error(error.to_string()),
     }
 }
 
 fn perform_service_action(service_name: &str, action: &str) -> Result<()> {
-    let manager = ServiceManager::local_computer(
-        None::<&str>,
-        ServiceManagerAccess::CONNECT,
-    )
-    .context("Could not connect to the Windows Service Control Manager")?;
+    let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)
+        .context("Could not connect to the Windows Service Control Manager")?;
 
-    let access =
-        ServiceAccess::QUERY_STATUS | ServiceAccess::START | ServiceAccess::STOP;
+    let access = ServiceAccess::QUERY_STATUS | ServiceAccess::START | ServiceAccess::STOP;
     let service = manager
         .open_service(service_name, access)
         .with_context(|| format!("Could not open service \"{service_name}\""))?;
@@ -429,10 +417,8 @@ impl App {
 
     fn initialize_tray(&mut self) -> Result<()> {
         let status_item = MenuItem::new("Status: Checking...", false, None);
-        let running_item =
-            CheckMenuItem::new("Running", true, false, None);
-        let stopped_item =
-            CheckMenuItem::new("Stopped", true, false, None);
+        let running_item = CheckMenuItem::new("Running", true, false, None);
+        let stopped_item = CheckMenuItem::new("Stopped", true, false, None);
         let restart_item = MenuItem::new("Restart MySQL", true, None);
         let refresh_item = MenuItem::new("Refresh now", true, None);
         let auto_start_item = CheckMenuItem::new(
@@ -442,8 +428,7 @@ impl App {
             None,
         );
         let edit_config_item = MenuItem::new("Edit configuration...", true, None);
-        let reload_config_item =
-            MenuItem::new("Reload configuration", true, None);
+        let reload_config_item = MenuItem::new("Reload configuration", true, None);
         let services_item = MenuItem::new("Open Windows Services", true, None);
         let about_item = MenuItem::new("About MySQL Tray Controller", true, None);
         let exit_item = MenuItem::new("Exit", true, None);
@@ -512,31 +497,22 @@ impl App {
         };
 
         let status_text = match &state {
-            MySqlState::Error(error) => format!(
-                "Status: {} ({})",
-                state.label(),
-                shorten(error, 45)
-            ),
-            _ => format!(
-                "Status: {} ({})",
-                state.label(),
-                self.config.service_name
-            ),
+            MySqlState::Error(error) => {
+                format!("Status: {} ({})", state.label(), shorten(error, 45))
+            }
+            _ => format!("Status: {} ({})", state.label(), self.config.service_name),
         };
 
         ui.status_item.set_text(&status_text);
         ui.running_item.set_checked(state.is_running_choice());
         ui.stopped_item.set_checked(state.is_stopped_choice());
 
-        let service_available =
-            !matches!(state, MySqlState::NotFound | MySqlState::Error(_));
+        let service_available = !matches!(state, MySqlState::NotFound | MySqlState::Error(_));
         ui.running_item.set_enabled(
-            service_available
-                && !matches!(state, MySqlState::Running | MySqlState::Starting),
+            service_available && !matches!(state, MySqlState::Running | MySqlState::Starting),
         );
         ui.stopped_item.set_enabled(
-            service_available
-                && !matches!(state, MySqlState::Stopped | MySqlState::Stopping),
+            service_available && !matches!(state, MySqlState::Stopped | MySqlState::Stopping),
         );
         ui.restart_item
             .set_enabled(service_available && matches!(state, MySqlState::Running));
@@ -548,12 +524,9 @@ impl App {
             self.config.service_name
         );
 
-        let _ = ui
-            .tray_icon
-            .set_icon(Some(
-                make_status_icon(state.color())
-                    .unwrap_or_else(|_| make_fallback_icon()),
-            ));
+        let _ = ui.tray_icon.set_icon(Some(
+            make_status_icon(state.color()).unwrap_or_else(|_| make_fallback_icon()),
+        ));
         let _ = ui.tray_icon.set_tooltip(Some(tooltip));
     }
 
@@ -564,9 +537,7 @@ impl App {
             };
 
             if event.id() == ui.running_item.id() {
-                if let Err(error) =
-                    launch_elevated_action("start", &self.config.service_name)
-                {
+                if let Err(error) = launch_elevated_action("start", &self.config.service_name) {
                     write_error_log(&format!("{error:#}"));
                     show_error(&format!("{error:#}"));
                 } else {
@@ -574,9 +545,7 @@ impl App {
                     self.next_refresh = Instant::now() + Duration::from_millis(500);
                 }
             } else if event.id() == ui.stopped_item.id() {
-                if let Err(error) =
-                    launch_elevated_action("stop", &self.config.service_name)
-                {
+                if let Err(error) = launch_elevated_action("stop", &self.config.service_name) {
                     write_error_log(&format!("{error:#}"));
                     show_error(&format!("{error:#}"));
                 } else {
@@ -584,9 +553,7 @@ impl App {
                     self.next_refresh = Instant::now() + Duration::from_millis(500);
                 }
             } else if event.id() == ui.restart_item.id() {
-                if let Err(error) =
-                    launch_elevated_action("restart", &self.config.service_name)
-                {
+                if let Err(error) = launch_elevated_action("restart", &self.config.service_name) {
                     write_error_log(&format!("{error:#}"));
                     show_error(&format!("{error:#}"));
                 } else {
@@ -704,19 +671,18 @@ fn make_status_icon(fill: [u8; 4]) -> Result<Icon> {
 }
 
 fn make_fallback_icon() -> Icon {
-    Icon::from_rgba(vec![127, 140, 141, 255], 1, 1)
-        .expect("A 1x1 RGBA icon is always valid")
+    Icon::from_rgba(vec![127, 140, 141, 255], 1, 1).expect("A 1x1 RGBA icon is always valid")
 }
 
 fn launch_elevated_action(action: &str, service_name: &str) -> Result<()> {
     if service_name.contains('"') {
-        return Err(anyhow!("The service name contains an invalid quote character"));
+        return Err(anyhow!(
+            "The service name contains an invalid quote character"
+        ));
     }
 
     let executable = env::current_exe().context("Could not locate the app executable")?;
-    let parameters = format!(
-        "--elevated-action {action} --service \"{service_name}\""
-    );
+    let parameters = format!("--elevated-action {action} --service \"{service_name}\"");
 
     let operation = to_wide("runas");
     let executable = to_wide(executable.as_os_str());
@@ -776,8 +742,7 @@ fn set_autostart(enable: bool) -> Result<()> {
         .context("Could not open the Windows startup registry key")?;
 
     if enable {
-        let executable =
-            env::current_exe().context("Could not locate the app executable")?;
+        let executable = env::current_exe().context("Could not locate the app executable")?;
         let command = format!("\"{}\" --startup", executable.display());
 
         key.set_value(RUN_VALUE_NAME, &command)
