@@ -28,7 +28,7 @@ use windows_sys::Win32::{
     UI::{
         Shell::ShellExecuteW,
         WindowsAndMessaging::{
-            MessageBoxW, MB_ICONERROR, MB_OK, SW_HIDE,
+            MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, SW_HIDE,
         },
     },
 };
@@ -41,6 +41,11 @@ use winit::{
 };
 
 const APP_NAME: &str = "MySQL Tray Controller";
+
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+const APP_AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+const APP_REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+
 const RUN_VALUE_NAME: &str = "MySQLTrayController";
 const RUN_REGISTRY_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -399,6 +404,7 @@ struct TrayUi {
     edit_config_item: MenuItem,
     reload_config_item: MenuItem,
     services_item: MenuItem,
+    about_item: MenuItem,
     exit_item: MenuItem,
 }
 
@@ -439,6 +445,7 @@ impl App {
         let reload_config_item =
             MenuItem::new("Reload configuration", true, None);
         let services_item = MenuItem::new("Open Windows Services", true, None);
+        let about_item = MenuItem::new("About MySQL Tray Controller", true, None);
         let exit_item = MenuItem::new("Exit", true, None);
 
         let separator_1 = PredefinedMenuItem::separator();
@@ -459,6 +466,7 @@ impl App {
             &reload_config_item,
             &services_item,
             &separator_3,
+            &about_item,
             &exit_item,
         ])
         .context("Could not build the tray menu")?;
@@ -483,6 +491,7 @@ impl App {
             edit_config_item,
             reload_config_item,
             services_item,
+            about_item,
             exit_item,
         });
 
@@ -618,6 +627,8 @@ impl App {
                     write_error_log(&format!("{error:#}"));
                     show_error(&format!("{error:#}"));
                 }
+            } else if event.id() == ui.about_item.id() {
+                show_about();
             } else if event.id() == ui.exit_item.id() {
                 event_loop.exit();
             }
@@ -800,6 +811,31 @@ fn open_windows_services() -> Result<()> {
         .spawn()
         .context("Could not open Windows Services")?;
     Ok(())
+}
+
+fn show_about() {
+    let message = format!(
+        "{APP_NAME}\n\
+         Version {APP_VERSION}\n\n\
+         Created by {APP_AUTHORS}\n\n\
+         A lightweight Windows tray controller for MySQL and MariaDB services.\n\n\
+         Repository:\n{APP_REPOSITORY}\n\n\
+         Licensed under the MIT License."
+    );
+
+    let title_text = format!("About {APP_NAME}");
+
+    let title = to_wide(title_text.as_str());
+    let message = to_wide(message.as_str());
+
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_OK | MB_ICONINFORMATION,
+        );
+    }
 }
 
 fn show_error(message: &str) {
