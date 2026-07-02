@@ -733,6 +733,7 @@ fn draw_status_symbol(buffer: &mut [u8], width: u32, state: &MySqlState) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_database(
     buffer: &mut [u8],
     width: u32,
@@ -796,6 +797,7 @@ fn draw_filled_ellipse(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_arc(
     buffer: &mut [u8],
     width: u32,
@@ -844,6 +846,7 @@ fn draw_filled_circle(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_rounded_rect(
     buffer: &mut [u8],
     width: u32,
@@ -868,6 +871,7 @@ fn draw_rounded_rect(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_thick_line(
     buffer: &mut [u8],
     width: u32,
