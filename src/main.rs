@@ -27,7 +27,9 @@ use windows_sys::Win32::{
     Foundation::ERROR_SERVICE_DOES_NOT_EXIST,
     UI::{
         Shell::ShellExecuteW,
-        WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, SW_HIDE},
+        WindowsAndMessaging::{
+            MessageBoxW, IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_YESNO, SW_HIDE,
+        },
     },
 };
 use winit::{
@@ -43,6 +45,7 @@ const APP_NAME: &str = "MySQL Tray Controller";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const APP_AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+const APP_STAR_MESSAGE: &str = "Enjoying the app? Please consider starring it on GitHub.";
 
 const RUN_VALUE_NAME: &str = "MySQLTrayController";
 const RUN_REGISTRY_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -392,6 +395,7 @@ struct TrayUi {
     edit_config_item: MenuItem,
     reload_config_item: MenuItem,
     services_item: MenuItem,
+    star_item: MenuItem,
     about_item: MenuItem,
     exit_item: MenuItem,
 }
@@ -430,6 +434,7 @@ impl App {
         let edit_config_item = MenuItem::new("Edit configuration...", true, None);
         let reload_config_item = MenuItem::new("Reload configuration", true, None);
         let services_item = MenuItem::new("Open Windows Services", true, None);
+        let star_item = MenuItem::new("★ Star this project on GitHub", true, None);
         let about_item = MenuItem::new("About MySQL Tray Controller", true, None);
         let exit_item = MenuItem::new("Exit", true, None);
 
@@ -451,6 +456,7 @@ impl App {
             &reload_config_item,
             &services_item,
             &separator_3,
+            &star_item,
             &about_item,
             &exit_item,
         ])
@@ -461,7 +467,7 @@ impl App {
             .with_menu_on_left_click(true)
             .with_menu_on_right_click(true)
             .with_tooltip(APP_NAME)
-            .with_icon(make_status_icon(MySqlState::Pending.color())?)
+            .with_icon(make_status_icon(&MySqlState::Pending)?)
             .build()
             .context("Could not create the tray icon")?;
 
@@ -476,6 +482,7 @@ impl App {
             edit_config_item,
             reload_config_item,
             services_item,
+            star_item,
             about_item,
             exit_item,
         });
@@ -525,7 +532,7 @@ impl App {
         );
 
         let _ = ui.tray_icon.set_icon(Some(
-            make_status_icon(state.color()).unwrap_or_else(|_| make_fallback_icon()),
+            make_status_icon(&state).unwrap_or_else(|_| make_fallback_icon()),
         ));
         let _ = ui.tray_icon.set_tooltip(Some(tooltip));
     }
@@ -594,8 +601,18 @@ impl App {
                     write_error_log(&format!("{error:#}"));
                     show_error(&format!("{error:#}"));
                 }
+            } else if event.id() == ui.star_item.id() {
+                if let Err(error) = open_url(APP_REPOSITORY) {
+                    write_error_log(&format!("{error:#}"));
+                    show_error(&format!("{error:#}"));
+                }
             } else if event.id() == ui.about_item.id() {
-                show_about();
+                if show_about() {
+                    if let Err(error) = open_url(APP_REPOSITORY) {
+                        write_error_log(&format!("{error:#}"));
+                        show_error(&format!("{error:#}"));
+                    }
+                }
             } else if event.id() == ui.exit_item.id() {
                 event_loop.exit();
             }
@@ -641,33 +658,319 @@ impl ApplicationHandler for App {
     }
 }
 
-fn make_status_icon(fill: [u8; 4]) -> Result<Icon> {
+fn make_status_icon(state: &MySqlState) -> Result<Icon> {
     const SIZE: u32 = 32;
-    let mut rgba = vec![0_u8; (SIZE * SIZE * 4) as usize];
-    let center = (SIZE as f32 - 1.0) / 2.0;
-    let outer_radius = 14.5_f32;
-    let inner_radius = 12.5_f32;
+    const SCALE: u32 = 4;
+    const CANVAS: u32 = SIZE * SCALE;
 
-    for y in 0..SIZE {
-        for x in 0..SIZE {
-            let dx = x as f32 - center;
-            let dy = y as f32 - center;
-            let distance = (dx * dx + dy * dy).sqrt();
-            let offset = ((y * SIZE + x) * 4) as usize;
+    let mut high_res = vec![0_u8; (CANVAS * CANVAS * 4) as usize];
 
-            let pixel = if distance <= inner_radius {
-                fill
-            } else if distance <= outer_radius {
-                [245, 245, 245, 255]
-            } else {
-                [0, 0, 0, 0]
-            };
+    let state_color = state.color();
+    let dark = [15, 23, 42, 255];
+    let white = [248, 250, 252, 255];
+    let highlight = [255, 255, 255, 115];
 
-            rgba[offset..offset + 4].copy_from_slice(&pixel);
+    draw_database(&mut high_res, CANVAS, 8, 9, 119, 119, 31, white);
+    draw_database(&mut high_res, CANVAS, 13, 14, 114, 114, 27, dark);
+    draw_database(&mut high_res, CANVAS, 20, 21, 107, 107, 22, state_color);
+
+    draw_filled_ellipse(
+        &mut high_res,
+        CANVAS,
+        28,
+        25,
+        99,
+        53,
+        lighten(state_color, 38),
+    );
+
+    draw_arc(&mut high_res, CANVAS, 21, 50, 106, 76, highlight, 5);
+    draw_arc(&mut high_res, CANVAS, 21, 76, 106, 102, highlight, 5);
+
+    draw_rounded_rect(
+        &mut high_res,
+        CANVAS,
+        28,
+        42,
+        34,
+        91,
+        3,
+        [255, 255, 255, 70],
+    );
+
+    draw_filled_circle(&mut high_res, CANVAS, 98, 99, 27, white);
+    draw_filled_circle(&mut high_res, CANVAS, 98, 99, 21, darken(state_color, 12));
+    draw_status_symbol(&mut high_res, CANVAS, state);
+
+    let rgba = downsample_rgba(&high_res, CANVAS, SIZE, SCALE);
+    Icon::from_rgba(rgba, SIZE, SIZE).context("Could not generate the tray icon")
+}
+
+fn draw_status_symbol(buffer: &mut [u8], width: u32, state: &MySqlState) {
+    let white = [255, 255, 255, 255];
+
+    match state {
+        MySqlState::Running => {
+            draw_thick_line(buffer, width, 87, 99, 95, 107, 5, white);
+            draw_thick_line(buffer, width, 95, 107, 109, 90, 5, white);
+        }
+        MySqlState::Stopped => {
+            draw_rounded_rect(buffer, width, 89, 90, 107, 108, 3, white);
+        }
+        MySqlState::Starting | MySqlState::Stopping | MySqlState::Pending => {
+            draw_filled_circle(buffer, width, 89, 99, 3, white);
+            draw_filled_circle(buffer, width, 98, 99, 3, white);
+            draw_filled_circle(buffer, width, 107, 99, 3, white);
+        }
+        MySqlState::Paused => {
+            draw_rounded_rect(buffer, width, 89, 89, 95, 109, 2, white);
+            draw_rounded_rect(buffer, width, 101, 89, 107, 109, 2, white);
+        }
+        MySqlState::NotFound | MySqlState::Error(_) => {
+            draw_rounded_rect(buffer, width, 95, 87, 101, 103, 2, white);
+            draw_filled_circle(buffer, width, 98, 110, 3, white);
+        }
+    }
+}
+
+fn draw_database(
+    buffer: &mut [u8],
+    width: u32,
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    ellipse_height: i32,
+    color: [u8; 4],
+) {
+    let center_x = (left + right) as f32 / 2.0;
+    let radius_x = (right - left) as f32 / 2.0;
+    let top_center_y = top as f32 + ellipse_height as f32 / 2.0;
+    let bottom_center_y = bottom as f32 - ellipse_height as f32 / 2.0;
+    let radius_y = ellipse_height as f32 / 2.0;
+
+    for y in top..=bottom {
+        for x in left..=right {
+            let within_body =
+                x >= left && x <= right && y as f32 >= top_center_y && y as f32 <= bottom_center_y;
+
+            let normalized_x = (x as f32 - center_x) / radius_x.max(1.0);
+            let top_normalized_y = (y as f32 - top_center_y) / radius_y.max(1.0);
+            let bottom_normalized_y = (y as f32 - bottom_center_y) / radius_y.max(1.0);
+
+            let within_top =
+                normalized_x * normalized_x + top_normalized_y * top_normalized_y <= 1.0;
+            let within_bottom =
+                normalized_x * normalized_x + bottom_normalized_y * bottom_normalized_y <= 1.0;
+
+            if within_body || within_top || within_bottom {
+                blend_pixel(buffer, width, x, y, color);
+            }
+        }
+    }
+}
+
+fn draw_filled_ellipse(
+    buffer: &mut [u8],
+    width: u32,
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    color: [u8; 4],
+) {
+    let center_x = (left + right) as f32 / 2.0;
+    let center_y = (top + bottom) as f32 / 2.0;
+    let radius_x = (right - left) as f32 / 2.0;
+    let radius_y = (bottom - top) as f32 / 2.0;
+
+    for y in top..=bottom {
+        for x in left..=right {
+            let dx = (x as f32 - center_x) / radius_x.max(1.0);
+            let dy = (y as f32 - center_y) / radius_y.max(1.0);
+
+            if dx * dx + dy * dy <= 1.0 {
+                blend_pixel(buffer, width, x, y, color);
+            }
+        }
+    }
+}
+
+fn draw_arc(
+    buffer: &mut [u8],
+    width: u32,
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    color: [u8; 4],
+    thickness: i32,
+) {
+    let center_x = (left + right) as f32 / 2.0;
+    let center_y = (top + bottom) as f32 / 2.0;
+    let radius_x = (right - left) as f32 / 2.0;
+    let radius_y = (bottom - top) as f32 / 2.0;
+
+    for x in left..=right {
+        let normalized_x = (x as f32 - center_x) / radius_x.max(1.0);
+        let under_root = (1.0 - normalized_x * normalized_x).max(0.0);
+        let y = center_y + radius_y * under_root.sqrt();
+
+        for offset in -(thickness / 2)..=(thickness / 2) {
+            blend_pixel(buffer, width, x, y.round() as i32 + offset, color);
+        }
+    }
+}
+
+fn draw_filled_circle(
+    buffer: &mut [u8],
+    width: u32,
+    center_x: i32,
+    center_y: i32,
+    radius: i32,
+    color: [u8; 4],
+) {
+    let radius_squared = radius * radius;
+
+    for y in (center_y - radius)..=(center_y + radius) {
+        for x in (center_x - radius)..=(center_x + radius) {
+            let dx = x - center_x;
+            let dy = y - center_y;
+
+            if dx * dx + dy * dy <= radius_squared {
+                blend_pixel(buffer, width, x, y, color);
+            }
+        }
+    }
+}
+
+fn draw_rounded_rect(
+    buffer: &mut [u8],
+    width: u32,
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    radius: i32,
+    color: [u8; 4],
+) {
+    for y in top..=bottom {
+        for x in left..=right {
+            let nearest_x = x.clamp(left + radius, right - radius);
+            let nearest_y = y.clamp(top + radius, bottom - radius);
+            let dx = x - nearest_x;
+            let dy = y - nearest_y;
+
+            if dx * dx + dy * dy <= radius * radius {
+                blend_pixel(buffer, width, x, y, color);
+            }
+        }
+    }
+}
+
+fn draw_thick_line(
+    buffer: &mut [u8],
+    width: u32,
+    start_x: i32,
+    start_y: i32,
+    end_x: i32,
+    end_y: i32,
+    thickness: i32,
+    color: [u8; 4],
+) {
+    let dx = end_x - start_x;
+    let dy = end_y - start_y;
+    let steps = dx.abs().max(dy.abs()).max(1);
+
+    for step in 0..=steps {
+        let progress = step as f32 / steps as f32;
+        let x = start_x as f32 + dx as f32 * progress;
+        let y = start_y as f32 + dy as f32 * progress;
+        draw_filled_circle(
+            buffer,
+            width,
+            x.round() as i32,
+            y.round() as i32,
+            thickness / 2,
+            color,
+        );
+    }
+}
+
+fn blend_pixel(buffer: &mut [u8], width: u32, x: i32, y: i32, source: [u8; 4]) {
+    if x < 0 || y < 0 || x >= width as i32 || y >= width as i32 {
+        return;
+    }
+
+    let index = ((y as u32 * width + x as u32) * 4) as usize;
+    let source_alpha = source[3] as f32 / 255.0;
+    let destination_alpha = buffer[index + 3] as f32 / 255.0;
+    let output_alpha = source_alpha + destination_alpha * (1.0 - source_alpha);
+
+    if output_alpha <= f32::EPSILON {
+        return;
+    }
+
+    for channel in 0..3 {
+        let source_value = source[channel] as f32 / 255.0;
+        let destination_value = buffer[index + channel] as f32 / 255.0;
+        let output = (source_value * source_alpha
+            + destination_value * destination_alpha * (1.0 - source_alpha))
+            / output_alpha;
+
+        buffer[index + channel] = (output * 255.0).round().clamp(0.0, 255.0) as u8;
+    }
+
+    buffer[index + 3] = (output_alpha * 255.0).round().clamp(0.0, 255.0) as u8;
+}
+
+fn downsample_rgba(source: &[u8], source_size: u32, output_size: u32, scale: u32) -> Vec<u8> {
+    let mut output = vec![0_u8; (output_size * output_size * 4) as usize];
+
+    for output_y in 0..output_size {
+        for output_x in 0..output_size {
+            let mut accumulated = [0_u32; 4];
+
+            for offset_y in 0..scale {
+                for offset_x in 0..scale {
+                    let source_x = output_x * scale + offset_x;
+                    let source_y = output_y * scale + offset_y;
+                    let source_index = ((source_y * source_size + source_x) * 4) as usize;
+
+                    for channel in 0..4 {
+                        accumulated[channel] += source[source_index + channel] as u32;
+                    }
+                }
+            }
+
+            let samples = scale * scale;
+            let output_index = ((output_y * output_size + output_x) * 4) as usize;
+
+            for channel in 0..4 {
+                output[output_index + channel] = (accumulated[channel] / samples) as u8;
+            }
         }
     }
 
-    Icon::from_rgba(rgba, SIZE, SIZE).context("Could not generate the tray icon")
+    output
+}
+
+fn lighten(color: [u8; 4], amount: u8) -> [u8; 4] {
+    [
+        color[0].saturating_add(amount),
+        color[1].saturating_add(amount),
+        color[2].saturating_add(amount),
+        color[3],
+    ]
+}
+
+fn darken(color: [u8; 4], amount: u8) -> [u8; 4] {
+    [
+        color[0].saturating_sub(amount),
+        color[1].saturating_sub(amount),
+        color[2].saturating_sub(amount),
+        color[3],
+    ]
 }
 
 fn make_fallback_icon() -> Icon {
@@ -778,29 +1081,56 @@ fn open_windows_services() -> Result<()> {
     Ok(())
 }
 
-fn show_about() {
+fn open_url(url: &str) -> Result<()> {
+    let operation = to_wide("open");
+    let url = to_wide(url);
+
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            operation.as_ptr(),
+            url.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            1,
+        )
+    };
+
+    if (result as isize) <= 32 {
+        return Err(anyhow!(
+            "Windows could not open the web browser (ShellExecuteW code {})",
+            result as isize
+        ));
+    }
+
+    Ok(())
+}
+
+fn show_about() -> bool {
     let message = format!(
         "{APP_NAME}\n\
          Version {APP_VERSION}\n\n\
          Created by {APP_AUTHORS}\n\n\
          A lightweight Windows tray controller for MySQL and MariaDB services.\n\n\
-         Repository:\n{APP_REPOSITORY}\n\n\
-         Licensed under the MIT License."
+         {APP_STAR_MESSAGE}\n\
+         {APP_REPOSITORY}\n\n\
+         Open the GitHub repository now?"
     );
 
     let title_text = format!("About {APP_NAME}");
-
     let title = to_wide(title_text.as_str());
     let message = to_wide(message.as_str());
 
-    unsafe {
+    let result = unsafe {
         MessageBoxW(
             std::ptr::null_mut(),
             message.as_ptr(),
             title.as_ptr(),
-            MB_OK | MB_ICONINFORMATION,
-        );
-    }
+            MB_YESNO | MB_ICONINFORMATION,
+        )
+    };
+
+    result == IDYES
 }
 
 fn show_error(message: &str) {

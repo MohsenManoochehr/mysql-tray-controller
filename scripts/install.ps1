@@ -25,13 +25,20 @@ if (-not (Test-Path $ReleaseExe)) {
     throw "Release executable not found: $ReleaseExe"
 }
 
+Get-Process "mysql-tray-controller" -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item $ReleaseExe $InstalledExe -Force
+
+Remove-Item $ShortcutPath -Force -ErrorAction SilentlyContinue
 
 $Shell = New-Object -ComObject WScript.Shell
 $Shortcut = $Shell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $InstalledExe
 $Shortcut.WorkingDirectory = $InstallDir
+$Shortcut.IconLocation = "$InstalledExe,0"
 $Shortcut.Description = "Control and monitor the local MySQL Windows service"
 $Shortcut.Save()
 

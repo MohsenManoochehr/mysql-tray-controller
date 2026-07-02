@@ -1,6 +1,17 @@
 # MySQL Tray Controller
 
-A small, headless Windows tray application written in Rust.
+<p align="center">
+  <img src="assets/app-icon.png" alt="MySQL Tray Controller icon" width="160">
+</p>
+
+<p align="center">
+  A lightweight native Windows tray controller for MySQL and MariaDB services.
+</p>
+
+<p align="center">
+  Created by <a href="https://github.com/MohsenManoochehr">Mohsen Manoochehr</a>
+</p>
+
 
 ## Behavior
 
@@ -58,6 +69,36 @@ Errors are logged to:
 ```text
 %APPDATA%\MySQLTrayController\error.log
 ```
+
+## Support the project
+
+If this app is useful, open the tray menu and choose:
+
+```text
+★ Star this project on GitHub
+```
+
+Repository: `https://github.com/MohsenManoochehr/mysql-tray-controller`
+
+The About dialog also offers a button that opens the repository.
+
+## Icon design
+
+The tray icon is now a database symbol rather than a plain circle:
+
+- Green database + check: running
+- Red database + stop square: stopped
+- Amber database + dots: changing state
+- Blue database + pause bars: paused
+- Gray database + exclamation mark: unavailable
+
+The Windows executable and Start Menu shortcut use the embedded icon from
+`assets/app.ico`.
+
+<p align="center">
+  <img src="assets/status-icons-preview.png" alt="Tray status icon preview">
+</p>
+
 
 ## Prerequisites
 
