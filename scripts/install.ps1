@@ -5,16 +5,22 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$ReleaseExe = Join-Path $ProjectRoot "target\release\mysql-tray-controller.exe"
+$BuiltExe = Join-Path $ProjectRoot "target\release\mysql-tray-controller.exe"
+$PackagedExe = Join-Path $ProjectRoot "mysql-tray-controller.exe"
+$ReleaseExe = $BuiltExe
 $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\MySQLTrayController"
 $InstalledExe = Join-Path $InstallDir "mysql-tray-controller.exe"
 $StartMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $ShortcutPath = Join-Path $StartMenuDir "MySQL Tray Controller.lnk"
 
-if (-not $SkipBuild) {
+if ($SkipBuild) {
+    $ReleaseExe = $PackagedExe
+}
+else {
     Push-Location $ProjectRoot
     try {
         cargo build --release
+        $ReleaseExe = $BuiltExe
     }
     finally {
         Pop-Location
