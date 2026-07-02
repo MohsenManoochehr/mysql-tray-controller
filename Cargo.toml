@@ -1,0 +1,27 @@
+[package]
+name = "mysql-tray-controller"
+version = "1.0.0"
+edition = "2021"
+description = "A headless Windows tray controller for a local MySQL service"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+tray-icon = "0.24.1"
+winit = "0.30.12"
+windows-service = "0.8.1"
+winreg = "0.56.0"
+
+[dependencies.windows-sys]
+version = "0.61.2"
+features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
