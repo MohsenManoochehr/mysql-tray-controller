@@ -1,6 +1,6 @@
 [package]
 name = "mysql-tray-controller"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Mohsen Manoochehr"]
 description = "A lightweight native Windows tray app for monitoring and controlling MySQL and MariaDB services"

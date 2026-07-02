@@ -1,10 +1,11 @@
 # Changelog
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-07-02
 
 ### Fixed
 
 - Wait for a stopping service before restarting it.
+- Support installation from both release packages and locally built source.
 
 ## [1.0.0] - 2026-07-02
 
