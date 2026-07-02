@@ -1,4 +1,4 @@
-# MySQL Tray Controller v1.0.0
+﻿# MySQL Tray Controller v1.0.0
 
 The first stable release of MySQL Tray Controller.
 
@@ -43,3 +43,4 @@ Open PowerShell inside the extracted folder and run:
 The executable is currently unsigned. Windows SmartScreen may display a warning on first launch.
 
 Created by Mohsen Manoochehr.
+
