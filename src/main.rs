@@ -312,8 +312,9 @@ fn query_service_state(service_name: &str) -> MySqlState {
             ServiceState::StartPending => MySqlState::Starting,
             ServiceState::StopPending => MySqlState::Stopping,
             ServiceState::Paused => MySqlState::Paused,
-            ServiceState::ContinuePending | ServiceState::PausePending => MySqlState::Pending,
-            _ => MySqlState::Pending,
+            ServiceState::ContinuePending | ServiceState::PausePending => {
+                MySqlState::Pending
+            }
         },
         Err(error) => MySqlState::Error(error.to_string()),
     }
@@ -713,7 +714,7 @@ fn launch_elevated_action(action: &str, service_name: &str) -> Result<()> {
 
     let result = unsafe {
         ShellExecuteW(
-            0,
+            std::ptr::null_mut(),
             operation.as_ptr(),
             executable.as_ptr(),
             parameters.as_ptr(),
@@ -807,7 +808,7 @@ fn show_error(message: &str) {
 
     unsafe {
         MessageBoxW(
-            0,
+            std::ptr::null_mut(),
             message.as_ptr(),
             title.as_ptr(),
             MB_OK | MB_ICONERROR,
